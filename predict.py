@@ -5,6 +5,7 @@ import glob
 import cv2
 import numpy as np
 import random
+import keras_metrics
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--save_weights_path", type = str  )
@@ -32,7 +33,7 @@ m = modelFN( n_classes , input_height=input_height, input_width=input_width   )
 m.load_weights(  args.save_weights_path + "." + str(  epoch_number )  )
 m.compile(loss='categorical_crossentropy',
       optimizer= 'adadelta' ,
-      metrics=['accuracy'])
+      metrics=[keras_metrics.precision(), keras_metrics.recall()])
 
 
 output_height = m.outputHeight
