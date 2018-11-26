@@ -52,7 +52,7 @@ modelFN = modelFns[ model_name ]
 m = modelFN( n_classes , input_height=input_height, input_width=input_width   )
 m.compile(loss='categorical_crossentropy',
       optimizer= optimizer_name ,
-      metrics=[keras_metrics.precision(), keras_metrics.recall()])
+      metrics=['accuracy', keras_metrics.precision, keras_metrics.recall])
 
 
 if len( load_weights ) > 0:
