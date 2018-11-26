@@ -54,7 +54,7 @@ m = modelFN( n_classes , input_height=input_height, input_width=input_width   )
 m.load_weights(  args.save_weights_path + "." + str(  epoch_number )  )
 m.compile(loss='categorical_crossentropy',
       optimizer= 'adadelta' ,
-      metrics=['accuracy', precision, recall])
+      metrics=[precision, recall])
 
 
 output_height = m.outputHeight
