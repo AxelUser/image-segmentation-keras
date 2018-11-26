@@ -5,7 +5,28 @@ import glob
 import cv2
 import numpy as np
 import random
-import keras_metrics
+from keras import backend as K
+
+def precision(y_true, y_pred):	
+    """Precision metric.	
+    Only computes a batch-wise average of precision. Computes the precision, a
+    metric for multi-label classification of how many selected items are
+    relevant.
+    """	
+    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))	
+    predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))	
+    precision = true_positives / (predicted_positives + K.epsilon())	
+    return precision
+
+def recall(y_true, y_pred):	
+    """Recall metric.	
+    Only computes a batch-wise average of recall. Computes the recall, a metric
+    for multi-label classification of how many relevant items are selected.	
+    """	
+    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))	
+    possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))	
+    recall = true_positives / (possible_positives + K.epsilon())	
+    return recall
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--save_weights_path", type = str  )
@@ -33,7 +54,7 @@ m = modelFN( n_classes , input_height=input_height, input_width=input_width   )
 m.load_weights(  args.save_weights_path + "." + str(  epoch_number )  )
 m.compile(loss='categorical_crossentropy',
       optimizer= 'adadelta' ,
-      metrics=['accuracy', keras_metrics.precision(), keras_metrics.recall()])
+      metrics=['accuracy', precision, recall])
 
 
 output_height = m.outputHeight
