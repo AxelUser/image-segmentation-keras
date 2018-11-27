@@ -2,26 +2,89 @@ import argparse
 import Models , LoadBatches
 from keras import backend as K
 
-def precision(y_true, y_pred):	
-    """Precision metric.	
-    Only computes a batch-wise average of precision. Computes the precision, a
-    metric for multi-label classification of how many selected items are
-    relevant.
-    """	
-    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))	
-    predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))	
-    precision = true_positives / (predicted_positives + K.epsilon())	
-    return precision
+from tensorflow.keras.layers import Layer
+import tensorflow.keras.backend as K
+from operator import truediv
 
-def recall(y_true, y_pred):	
-    """Recall metric.	
-    Only computes a batch-wise average of recall. Computes the recall, a metric
-    for multi-label classification of how many relevant items are selected.	
-    """	
-    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))	
-    possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))	
-    recall = true_positives / (possible_positives + K.epsilon())	
-    return recall
+
+class Recall(Layer):
+    '''Compute recall over all batches.
+    # Arguments
+        name: String, name for the metric.
+        class_ind: Integer, class index.
+    '''
+    def __init__(self, name='recall', class_ind=1):
+        super(Recall, self).__init__(name=name)
+        self.true_positives = K.variable(value=0, dtype='float32')
+        self.total_positives = K.variable(value=0, dtype='float32')
+        self.class_ind = class_ind
+
+    def reset_states(self):
+        K.set_value(self.true_positives, 0.0)
+        K.set_value(self.total_positives, 0.0)
+
+    def __call__(self, y_true, y_pred):
+        '''Update recall computation.
+        # Arguments
+            y_true: Tensor, batch_wise labels
+            y_pred: Tensor, batch_wise predictions
+        # Returns
+            Overall recall for the epoch at the completion of the batch.
+        '''
+        # Batch
+        y_true, y_pred = _slice_by_class(y_true, y_pred, self.class_ind)
+        true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+        total_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
+        # Current
+        current_true_positives = self.true_positives * 1
+        current_total_positives = self.total_positives * 1
+        # Updates
+        updates = [K.update_add(self.true_positives, true_positives),
+                   K.update_add(self.total_positives, total_positives)]
+        self.add_update(updates, inputs=[y_true, y_pred])
+        # Compute recall
+        return (current_true_positives + true_positives) / \
+               (current_total_positives + total_positives + K.epsilon())
+
+
+class Precision(Layer):
+    '''Compute precision over all batches.
+    # Arguments
+        name: String, name for the metric.
+        class_ind: Integer, class index.
+    '''
+    def __init__(self, name='precision', class_ind=1):
+        super(Precision, self).__init__(name=name)
+        self.true_positives = K.variable(value=0, dtype='float32')
+        self.pred_positives = K.variable(value=0, dtype='float32')
+        self.class_ind = class_ind
+
+    def reset_states(self):
+        K.set_value(self.true_positives, 0.0)
+        K.set_value(self.pred_positives, 0.0)
+
+    def __call__(self, y_true, y_pred):
+        '''Update precision computation.
+        # Arguments
+            y_true: Tensor, batch_wise labels
+            y_pred: Tensor, batch_wise predictions
+        # Returns
+            Overall precision for the epoch at the completion of the batch.
+        '''
+        # Batch
+        y_true, y_pred = _slice_by_class(y_true, y_pred, self.class_ind)
+        true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+        pred_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
+        # Current
+        current_true_positives = self.true_positives * 1
+        current_pred_positives = self.pred_positives * 1
+        # Updates
+        updates = [K.update_add(self.true_positives, true_positives),
+                   K.update_add(self.pred_positives, pred_positives)]
+        self.add_update(updates, inputs=[y_true, y_pred])
+        # Compute recall
+        return (current_true_positives + true_positives) / \
+               (current_pred_positives + pred_positives + K.epsilon())
 
 
 
@@ -73,7 +136,7 @@ modelFN = modelFns[ model_name ]
 m = modelFN( n_classes , input_height=input_height, input_width=input_width   )
 m.compile(loss='categorical_crossentropy',
       optimizer= optimizer_name ,
-      metrics=[precision, recall])
+      metrics=[Precision(), Recall()])
 
 
 if len( load_weights ) > 0:
