@@ -86,6 +86,24 @@ class Precision(Layer):
         return (current_true_positives + true_positives) / \
                (current_pred_positives + pred_positives + K.epsilon())
 
+def _slice_by_class(y_true, y_pred, class_ind):
+    ''' Slice the batch predictions and labels with respect to a given class
+    that is encoded by a categorical or binary label.
+    #  Arguments:
+        y_true: Tensor, batch_wise labels.
+        y_pred: Tensor, batch_wise predictions.
+        class_ind: Integer, class index.
+    # Returns:
+        y_slice_true: Tensor, batch_wise label slice.
+        y_slice_pred: Tensor,  batch_wise predictions, slice.
+    '''
+    # Binary encoded
+    if y_pred.shape[-1] == 1:
+        y_slice_true, y_slice_pred = y_true, y_pred
+    # Categorical encoded
+    else:
+        y_slice_true, y_slice_pred = y_true[..., class_ind], y_pred[..., class_ind]
+    return y_slice_true, y_slice_pred
 
 
 parser = argparse.ArgumentParser()
